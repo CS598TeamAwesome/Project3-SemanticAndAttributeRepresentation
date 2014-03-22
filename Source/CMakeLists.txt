@@ -11,5 +11,5 @@ find_package(LibSVM REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_subdirectory(Train)
-#add_subdirectory(Test)
+add_subdirectory(Test)
 
