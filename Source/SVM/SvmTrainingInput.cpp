@@ -1,9 +1,12 @@
-#include <Feature/ColorHistogram.hpp>
+﻿#include <Feature/ColorHistogram.hpp>
 #include <Feature/HistogramOfOrientedGradients.hpp>
 #include <BagOfFeatures/Codewords.hpp>
+#include <Quantization/HardAssignment.hpp>
 #include <vector>
 #include <string>
-#include <sstream>
+#include <fstream>
+#include <algorithm>
+#include <map>
 #include <opencv2/opencv.hpp>
 
 using namespace ColorTextureShape;
@@ -13,12 +16,15 @@ cv::Size regionSize(54, 54); // Default HoG is 3x3 cell blocks of 6x6 pixel cell
 
 std::vector<cv::Mat> load_images(std::string imageFileList)
 {
-    std::istringstream iss(imageFileList);
+    std::ifstream iss(imageFileList);
     
     std::vector<cv::Mat> images;
     while(iss)
     {
-        cv::Mat img = cv::imread(std::getline(iss));
+        std::string imFile;
+        std::getline(iss,imFile);
+        
+        cv::Mat img = cv::imread(imFile);
         images.push_back(img);
     }
     
@@ -31,12 +37,13 @@ int main(int argc, char **argv)
     std::vector<HistogramFeature *> features = { new HistogramOfOrientedGradients(), new ColorHistogram() };
     
     // Load input images
-    std::vector<cv::Mat> images = load_image(argv[1]);
-    std::vector<std::vector<double>> features;
+    std::vector<cv::Mat> images = load_images(argv[1]);  
+    std::vector<std::vector<std::vector<double>>> featuresForImages;
     
     // Extract HoG features and Color Histograms using early fusion
     for(cv::Mat img : images)
     {
+        std::vector<std::vector<double>> imgFeatures;
         for(int j = 0; j < img.rows - regionSize.height + 1; j++)
         {
             for(int i = 0; i <  img.cols - regionSize.width + 1; i++)
@@ -47,12 +54,14 @@ int main(int argc, char **argv)
                 for(HistogramFeature *feat : features)
                 {
                     std::vector<double> f = feat->Compute(region);
-                    featureVector.insert(featureVector.end(), f);
+                    featureVector.insert(featureVector.end(), f.begin(), f.end());
                 }
                 
-                features.push_back(featureVector);             
+                imgFeatures.push_back(featureVector);             
             }
         }
+        
+        featuresForImages.push_back(imgFeatures);
     }
     
     for(HistogramFeature *feat : features)
@@ -61,9 +70,46 @@ int main(int argc, char **argv)
     }
     
     // Create codebook
-    std::vector<std::vector<double>> codebook;
-    FindCodewords(features, 100, codebook);
+    std::vector<std::vector<double>> featureSet;
+    for(auto &feat : featuresForImages)
+    {
+        for(auto fv : feat)
+            featureSet.push_back(fv);
+    }
     
-    // Save codebook
+    std::vector<std::vector<double>> codebook;
+    FindCodewords(featureSet, 100, codebook);
+    
+    // Save codebook for later testing
     SaveCodebook("codebook", codebook);
+    
+    // Compute bag of features for each training image
+    HardAssignment quant(codebook);
+    std::vector<std::vector<double>> trainingBoW;
+    for(int i = 0; i < images.size(); i++)
+    {
+        std::vector<double> bow;
+        quant.quantize(featuresForImages[i], bow);
+        
+        trainingBoW.push_back(bow);
+    }        
+    
+    // Save the training file in LibSVM format
+    std::ofstream trainingFile("train");
+    for(int i = 0; i < images.size(); i++)
+    {
+        trainingFile << i + 1 << " ";
+        
+        for(int j = 0; j < trainingBoW[i].size(); j++)
+        {
+            if(trainingBoW[i][j] != 0)
+            {
+                trainingFile << j + 1 << ":" << trainingBoW[i][j] << " ";
+            }
+        }
+        
+        trainingFile << std::endl;
+    }
+    
+    return 0;
 }
