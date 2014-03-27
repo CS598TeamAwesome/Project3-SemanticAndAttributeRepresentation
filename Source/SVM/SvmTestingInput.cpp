@@ -80,3 +80,22 @@ int main(int argc, char **argv)
         testingBoW.push_back(bow);
     }
 
+    // Save the training file in LibSVM format
+    std::ofstream trainingFile("train");
+    for(int i = 0; i < images.size(); i++)
+    {
+        trainingFile << "0 ";
+
+        for(int j = 0; j < trainingBoW[i].size(); j++)
+        {
+            if(trainingBoW[i][j] != 0)
+            {
+                trainingFile << j + 1 << ":" << trainingBoW[i][j] << " ";
+            }
+        }
+
+        trainingFile << std::endl;
+    }
+
+    return 0;
+}
