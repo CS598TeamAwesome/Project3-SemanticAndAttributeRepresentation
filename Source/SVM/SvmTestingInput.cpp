@@ -31,7 +31,9 @@ std::vector<cv::Mat> load_images(std::string imageFileList)
 int main(int argc, char **argv)
 {
     // Feature set
-    std::vector<HistogramFeature *> features = { new HistogramOfOrientedGradients(), new ColorHistogram() };
+    std::vector<HistogramFeature *> features; 
+    features.push_back(new HistogramOfOrientedGradients());
+    features.push_back(new ColorHistogram());
 
     // Load input images
     std::vector<cv::Mat> images = load_images(argv[1]);
