@@ -3,6 +3,7 @@
 #include <BagOfFeatures/Codewords.hpp>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <opencv2/opencv.hpp>
 
 using namespace ColorTextureShape;
@@ -12,13 +13,22 @@ cv::Size regionSize(54, 54); // Default HoG is 3x3 cell blocks of 6x6 pixel cell
 
 std::vector<cv::Mat> load_images(std::string imageFileList)
 {
+    std::istringstream iss(imageFileList);
     
+    std::vector<cv::Mat> images;
+    while(iss)
+    {
+        cv::Mat img = cv::imread(std::getline(iss));
+        images.push_back(img);
+    }
+    
+    return images;
 }
 
 int main(int argc, char **argv)
 {
     // Feature set
-    std::vector<HistogramFeature *> features =  { new HistogramOfOrientedGradients(), new ColorHistogram() };
+    std::vector<HistogramFeature *> features = { new HistogramOfOrientedGradients(), new ColorHistogram() };
     
     // Load input images
     std::vector<cv::Mat> images = load_image(argv[1]);
