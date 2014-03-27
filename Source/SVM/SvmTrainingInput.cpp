@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     std::ofstream trainingFile("train");
     for(int i = 0; i < images.size(); i++)
     {
-        trainingFile << i < images.size() / 2  ? "+1" : "-1" << " ";
+        trainingFile << (i < images.size() / 2  ? "+1" : "-1") << " ";
         
         for(int j = 0; j < trainingBoW[i].size(); j++)
         {

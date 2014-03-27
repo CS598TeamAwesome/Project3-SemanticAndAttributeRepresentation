@@ -3,6 +3,7 @@
 #include <BagOfFeatures/Codewords.hpp>
 #include <Quantization/HardAssignment.hpp>
 #include <vector>
+#include <fstream>
 #include <opencv2/opencv.hpp>
 
 using namespace ColorTextureShape;
@@ -81,20 +82,20 @@ int main(int argc, char **argv)
     }
 
     // Save the training file in LibSVM format
-    std::ofstream trainingFile("train");
+    std::ofstream testingFile("test");
     for(int i = 0; i < images.size(); i++)
     {
-        trainingFile << "0 ";
+        testingFile << "0 ";
 
-        for(int j = 0; j < trainingBoW[i].size(); j++)
+        for(int j = 0; j < testingBoW[i].size(); j++)
         {
-            if(trainingBoW[i][j] != 0)
+            if(testingBoW[i][j] != 0)
             {
-                trainingFile << j + 1 << ":" << trainingBoW[i][j] << " ";
+                testingFile << j + 1 << ":" << testingBoW[i][j] << " ";
             }
         }
 
-        trainingFile << std::endl;
+        testingFile << std::endl;
     }
 
     return 0;
