@@ -43,9 +43,9 @@ int main(int argc, char **argv)
     for(cv::Mat img : images)
     {
         std::vector<std::vector<double>> imgFeatures;
-        for(int j = 0; j < img.rows - regionSize.height + 1; j++)
+        for(int j = 0; j < img.rows - regionSize.height + 1; j+=regionSize.height)
         {
-            for(int i = 0; i <  img.cols - regionSize.width + 1; i++)
+            for(int i = 0; i <  img.cols - regionSize.width + 1; i+=regionSize.width)
             {
                 cv::Mat region = img(cv::Rect(i, j, regionSize.width, regionSize.height));
 
