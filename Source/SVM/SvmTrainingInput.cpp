@@ -39,11 +39,12 @@ int main(int argc, char **argv)
     features.push_back(new ColorHistogram());
     
     // Load input images
-    std::vector<cv::Mat> images = load_images(argv[1]);  
-    std::vector<std::vector<std::vector<double>>> featuresForImages;
+    std::vector<cv::Mat> posImages = load_images(argv[1]);  
+    std::vector<cv::Mat> negImages = load_images(argv[2]);
+    std::map<cv::Mat *, std::vector<std::vector<double>>> featuresForImages;
     
     // Extract HoG features and Color Histograms using early fusion
-    for(cv::Mat img : images)
+    for(cv::Mat &img : posImages)
     {
         std::vector<std::vector<double>> imgFeatures;
         for(int j = 0; j < img.rows - regionSize.height + 1; j+=regionSize.height)
@@ -63,7 +64,30 @@ int main(int argc, char **argv)
             }
         }
         
-        featuresForImages.push_back(imgFeatures);
+        featuresForImages[&img] = imgFeatures;
+    }
+    
+    for(cv::Mat &img : negImages)
+    {
+        std::vector<std::vector<double>> imgFeatures;
+        for(int j = 0; j < img.rows - regionSize.height + 1; j+=regionSize.height)
+        {
+            for(int i = 0; i <  img.cols - regionSize.width + 1; i+=regionSize.width)
+            {
+                cv::Mat region = img(cv::Rect(i, j, regionSize.width, regionSize.height));
+                
+                std::vector<double> featureVector;                
+                for(HistogramFeature *feat : features)
+                {
+                    std::vector<double> f = feat->Compute(region);
+                    featureVector.insert(featureVector.end(), f.begin(), f.end());
+                }
+                
+                imgFeatures.push_back(featureVector);             
+            }
+        }
+        
+        featuresForImages[&img] = imgFeatures;
     }
     
     for(HistogramFeature *feat : features)
@@ -75,7 +99,7 @@ int main(int argc, char **argv)
     std::vector<std::vector<double>> featureSet;
     for(auto &feat : featuresForImages)
     {
-        for(auto fv : feat)
+        for(auto fv : feat.second)
             featureSet.push_back(fv);
     }
     
@@ -87,26 +111,49 @@ int main(int argc, char **argv)
     
     // Compute bag of features for each training image
     HardAssignment quant(codebook);
-    std::vector<std::vector<double>> trainingBoW;
-    for(int i = 0; i < images.size(); i++)
+    std::map<cv::Mat *, std::vector<double>> trainingBoW;
+    for(cv::Mat &img: posImages)
     {
         std::vector<double> bow;
-        quant.quantize(featuresForImages[i], bow);
+        quant.quantize(featuresForImages[&img], bow);
         
-        trainingBoW.push_back(bow);
-    }        
+        trainingBoW[&img] = bow;
+    }
+    
+    for(cv::Mat &img: negImages)
+    {
+        std::vector<double> bow;
+        quant.quantize(featuresForImages[&img], bow);
+        
+        trainingBoW[&img] = bow;
+    }
     
     // Save the training file in LibSVM format
     std::ofstream trainingFile("train");
-    for(int i = 0; i < images.size(); i++)
+    for(cv::Mat &img : posImages)
     {
-        trainingFile << (i < images.size() / 2  ? "+1" : "-1") << " ";
+        trainingFile << "+1 ";
         
-        for(int j = 0; j < trainingBoW[i].size(); j++)
+        for(int j = 0; j < trainingBoW[&img].size(); j++)
         {
-            if(trainingBoW[i][j] != 0)
+            if(trainingBoW[&img][j] != 0)
             {
-                trainingFile << j + 1 << ":" << trainingBoW[i][j] << " ";
+                trainingFile << j + 1 << ":" << trainingBoW[&img][j] << " ";
+            }
+        }
+        
+        trainingFile << std::endl;
+    }
+    
+    for(cv::Mat &img : negImages)
+    {
+        trainingFile << "-1 ";
+        
+        for(int j = 0; j < trainingBoW[&img].size(); j++)
+        {
+            if(trainingBoW[&img][j] != 0)
+            {
+                trainingFile << j + 1 << ":" << trainingBoW[&img][j] << " ";
             }
         }
         
