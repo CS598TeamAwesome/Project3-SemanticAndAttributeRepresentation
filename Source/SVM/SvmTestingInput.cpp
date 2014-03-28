@@ -2,6 +2,8 @@
 #include <Feature/ColorHistogram.hpp>
 #include <BagOfFeatures/Codewords.hpp>
 #include <Quantization/HardAssignment.hpp>
+#include <Quantization/VocabularyTreeQuantization.hpp>
+#include <Util/Clustering.hpp>
 #include <vector>
 #include <fstream>
 #include <opencv2/opencv.hpp>
@@ -22,7 +24,8 @@ std::vector<cv::Mat> load_images(std::string imageFileList)
         std::getline(iss,imFile);
 
         cv::Mat img = cv::imread(imFile);
-        images.push_back(img);
+        if(img.data != NULL)
+            images.push_back(img);
     }
 
     return images;
@@ -93,12 +96,17 @@ int main(int argc, char **argv)
         delete feat;
     }
 
+/*
     // Load codebook
     std::vector<std::vector<double>> codebook;
     LoadCodebook(argv[3], codebook);
+*/
+    vocabulary_tree tree;
+    LoadVocabularyTree("tree", tree);
 
     // Compute bag of features for each testing image
-    HardAssignment quant(codebook);
+    //HardAssignment quant(codebook);
+    VocabularyTreeQuantization quant(tree);
     std::map<cv::Mat *, std::vector<double>> testingBoW;
     for(cv::Mat &img: posImages)
     {
@@ -117,7 +125,7 @@ int main(int argc, char **argv)
     }
 
     // Save the training file in LibSVM format
-    std::ofstream testingFile("test");
+    std::ofstream testingFile("test.out");
     for(cv::Mat &img : posImages)
     {
         testingFile << "+1 ";
@@ -147,6 +155,6 @@ int main(int argc, char **argv)
         
         testingFile << std::endl;
     }
-
+    testingFile.close();
     return 0;
 }
