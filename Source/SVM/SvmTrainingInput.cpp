@@ -2,11 +2,14 @@
 #include <Feature/HistogramOfOrientedGradients.hpp>
 #include <BagOfFeatures/Codewords.hpp>
 #include <Quantization/HardAssignment.hpp>
+#include <Quantization/VocabularyTreeQuantization.hpp>
+#include <Util/Clustering.hpp>
 #include <vector>
 #include <string>
 #include <fstream>
 #include <algorithm>
 #include <map>
+#include <time.h>
 #include <opencv2/opencv.hpp>
 
 using namespace ColorTextureShape;
@@ -25,7 +28,8 @@ std::vector<cv::Mat> load_images(std::string imageFileList)
         std::getline(iss,imFile);
         
         cv::Mat img = cv::imread(imFile);
-        images.push_back(img);
+        if(img.data != NULL)
+            images.push_back(img);
     }
     
     return images;
@@ -103,14 +107,30 @@ int main(int argc, char **argv)
             featureSet.push_back(fv);
     }
     
+/*
     std::vector<std::vector<double>> codebook;
-    FindCodewords(featureSet, 100, codebook);
-    
+    FindCodewords(featureSet, 5, codebook);
+*/
+
+    double start = clock();
+    std::cout << "Build Vocabulary Tree" << std::endl;
+    vocabulary_tree tree; //(4^4) = 256 words
+    tree.K = 4; //branching factor
+    tree.L = 4; //depth
+    hierarchical_kmeans(featureSet, tree);
+    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+
+/*
     // Save codebook for later testing
     SaveCodebook("codebook", codebook);
-    
+*/
+    SaveVocabularyTree("tree", tree);
+
     // Compute bag of features for each training image
+/*
     HardAssignment quant(codebook);
+*/
+    VocabularyTreeQuantization quant(tree);
     std::map<cv::Mat *, std::vector<double>> trainingBoW;
     for(cv::Mat &img: posImages)
     {
@@ -129,7 +149,7 @@ int main(int argc, char **argv)
     }
     
     // Save the training file in LibSVM format
-    std::ofstream trainingFile("train");
+    std::ofstream trainingFile("train.out");
     for(cv::Mat &img : posImages)
     {
         trainingFile << "+1 ";
@@ -159,6 +179,6 @@ int main(int argc, char **argv)
         
         trainingFile << std::endl;
     }
-    
+    trainingFile.close();
     return 0;
 }
