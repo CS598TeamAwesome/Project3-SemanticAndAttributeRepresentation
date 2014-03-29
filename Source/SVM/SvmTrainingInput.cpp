@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <algorithm>
 #include <map>
 #include <time.h>
@@ -37,17 +38,27 @@ std::vector<cv::Mat> load_images(std::string imageFileList)
 
 int main(int argc, char **argv)
 {
+    std::cout << "Building Training Set" << std::endl;
+    std::cout << "-------- -------- ---" << std::endl;
+    
     // Feature set
     std::vector<HistogramFeature *> features; 
     features.push_back(new HistogramOfOrientedGradients());
     features.push_back(new ColorHistogram());
     
     // Load input images
+    std::cout << "Loading positive and negative samples...";
+    double start = clock();
     std::vector<cv::Mat> posImages = load_images(argv[1]);  
     std::vector<cv::Mat> negImages = load_images(argv[2]);
+    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+    
+    
     std::map<cv::Mat *, std::vector<std::vector<double>>> featuresForImages;
     
     // Extract HoG features and Color Histograms using early fusion
+    std::cout << "Extracting features...";
+    start = clock();
     for(cv::Mat &img : posImages)
     {
         std::vector<std::vector<double>> imgFeatures;
@@ -93,6 +104,7 @@ int main(int argc, char **argv)
         
         featuresForImages[&img] = imgFeatures;
     }
+    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
     
     for(HistogramFeature *feat : features)
     {
@@ -106,30 +118,20 @@ int main(int argc, char **argv)
         for(auto fv : feat.second)
             featureSet.push_back(fv);
     }
-    
-/*
-    std::vector<std::vector<double>> codebook;
-    FindCodewords(featureSet, 5, codebook);
-*/
 
-    double start = clock();
-    std::cout << "Build Vocabulary Tree" << std::endl;
+    std::cout << "Bulding codebook...";
+    start = clock();
     vocabulary_tree tree; //(4^4) = 256 words
     tree.K = 4; //branching factor
     tree.L = 4; //depth
     hierarchical_kmeans(featureSet, tree);
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 
-/*
-    // Save codebook for later testing
-    SaveCodebook("codebook", codebook);
-*/
     SaveVocabularyTree("tree", tree);
 
     // Compute bag of features for each training image
-/*
-    HardAssignment quant(codebook);
-*/
+    std::cout << "Computing BoW for each input image..";
+    start = clock();
     VocabularyTreeQuantization quant(tree);
     std::map<cv::Mat *, std::vector<double>> trainingBoW;
     for(cv::Mat &img: posImages)
@@ -148,7 +150,11 @@ int main(int argc, char **argv)
         trainingBoW[&img] = bow;
     }
     
+    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+    
     // Save the training file in LibSVM format
+    start = clock();
+    std::cout << "Saving training data...";
     std::ofstream trainingFile("train.out");
     for(cv::Mat &img : posImages)
     {
@@ -180,5 +186,9 @@ int main(int argc, char **argv)
         trainingFile << std::endl;
     }
     trainingFile.close();
+    
+    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+    
+    std::cout << "Done!";
     return 0;
 }
