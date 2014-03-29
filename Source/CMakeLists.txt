@@ -15,5 +15,5 @@ include_directories(${P2_INCLUDE_DIR})
 include_directories(${P1_INCLUDE_DIR})
 
 add_subdirectory(SVM)
-
+add_subdirectory(Data)
 
