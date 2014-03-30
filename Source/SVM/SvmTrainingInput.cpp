@@ -112,22 +112,29 @@ int main(int argc, char **argv)
     }
     
     // Create codebook
-    std::vector<std::vector<double>> featureSet;
-    for(auto &feat : featuresForImages)
-    {
-        for(auto fv : feat.second)
-            featureSet.push_back(fv);
-    }
-
-    std::cout << "Bulding codebook...";
-    start = clock();
     vocabulary_tree tree; //(4^4) = 256 words
-    tree.K = 4; //branching factor
-    tree.L = 4; //depth
-    hierarchical_kmeans(featureSet, tree);
-    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
-
-    SaveVocabularyTree("tree", tree);
+    if(argc < 4)
+    {
+        std::vector<std::vector<double>> featureSet;
+        for(auto &feat : featuresForImages)
+        {
+            for(auto fv : feat.second)
+                featureSet.push_back(fv);
+        }
+    
+        std::cout << "Bulding codebook...";
+        start = clock();
+        tree.K = 4; //branching factor
+        tree.L = 4; //depth
+        hierarchical_kmeans(featureSet, tree);
+        std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+    
+        SaveVocabularyTree("tree", tree);
+    }
+    else
+    {
+        LoadVocabularyTree(argv[3], tree);
+    }
 
     // Compute bag of features for each training image
     std::cout << "Computing BoW for each input image..";

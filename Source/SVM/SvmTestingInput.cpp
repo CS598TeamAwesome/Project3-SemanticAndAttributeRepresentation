@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     LoadCodebook(argv[3], codebook);
 */
     vocabulary_tree tree;
-    LoadVocabularyTree("tree", tree);
+    LoadVocabularyTree(argv[3], tree);
 
     // Compute bag of features for each testing image
     //HardAssignment quant(codebook);
